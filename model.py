@@ -125,7 +125,24 @@ class BilateralFilter:
     def filter_image(self,image:Image) ->Image:
         return cv.bilateralFilter(image,9,75,75)
 
+class NoiseRemovalGray:
+    def filter_image(self,image:Image) ->Image:
+        image=cv.cvtColor(image,cv.COLOR_BGR2GRAY)
+        se=cv.getStructuringElement(cv.MORPH_RECT , (8,8))
+        bg=cv.morphologyEx(image, cv.MORPH_DILATE, se)
+        out_gray=cv.divide(image, bg, scale=255)
+        return out_gray
         
+
+class NoiseRemovalBinary:
+    def filter_image(self,image:Image) ->Image:
+        image=cv.cvtColor(image,cv.COLOR_BGR2GRAY)
+        se=cv.getStructuringElement(cv.MORPH_RECT , (8,8))
+        bg=cv.morphologyEx(image, cv.MORPH_DILATE, se)
+        out_gray=cv.divide(image, bg, scale=255)
+        out_binary=cv.threshold(out_gray, 0, 255, cv.THRESH_OTSU )[1] 
+        return out_binary
+    
 class ColorFilter(Enum):
     IncSaturation = IncreaseSaturation
     DecSaturation = DecreaseSaturation
@@ -154,6 +171,10 @@ class BlurFilter(Enum):
     BoxBlur = BoxBlur   
     BilateralFilter = BilateralFilter
 
+class NoiseRemoval(Enum):
+    NoiseRemovalBinary = NoiseRemovalBinary
+    NoiseRemovalGray = NoiseRemovalGray
+
 class Filter_Classes(Enum):
     ColorFilter = ColorFilter
     ContrastFilter = ContrastFilter
@@ -161,6 +182,7 @@ class Filter_Classes(Enum):
     ThresholdFilter = ThresholdFilter
     EdgeFilter = EdgeFilter
     BlurFilter = BlurFilter
+    NoiseRemoval = NoiseRemoval
 
 
 class FilterDleGame:
@@ -168,12 +190,15 @@ class FilterDleGame:
         assert rounds >= 0, "Invalid rounds"
         assert attempts >= 0, "Invalid attempts"
         assert len(images) != 0,"No images"
-        assert no_of_filters>=1, "Invalid number of filters"
+        assert no_of_filters >= 1, "Invalid number of filters"
 
         self._rounds = rounds
         self._attempts = attempts
         self._no_of_filters = no_of_filters
         self._images = images
+
+        self._attemptsleft = attempts
+        self._no_of_currentguesses = 0
 
         self._current_round = 0
         self._current_correctguesses = 0
@@ -181,9 +206,11 @@ class FilterDleGame:
         self._guessed_filters:list[Filter] = []        
         self._isRoundOver = False
         self._isGameOver = False
-        self._currentImage = None
-        self._filteredImage = None
+        self._currentImage :MatLike | None = None
+        self._filteredImage:MatLike | None = None
 
+        self.generate_random_image()
+        self.randfilter_image()
     
     def get_rounds(self):
         return self._rounds
@@ -198,7 +225,7 @@ class FilterDleGame:
         return self._filteredImage
     
     def nextRound(self):
-        return self._isRoundOver
+        return self._isRoundOver and (self._current_round + 1 != self._rounds + 1)
     
     def randfilter_image(self):
         assert self._currentImage is not None
@@ -210,22 +237,51 @@ class FilterDleGame:
             random_filter_instance = random_filter()
             self._correct_filters.append(random_filter_instance)
             self._filteredImage = random_filter_instance.filter_image(self._filteredImage)
-            
+    
+    def generate_random_image(self):
+        self._currentImage = self._images[random.randint(0,len(self._images)-1)]
+
     def remove_guess(self,guess:Filter):
-        ...
+        self._guessed_filters.remove(guess)
     
     def make_guess(self,guess:Filter):
+        if(self._isGameOver):
+            return Verdict.isGameOver
+        
         verdict = self._check_guess(guess)
-        self._guessed_filters.append(guess)
+        match verdict:
+            case Verdict.CorrectGuess:
+                self._attemptsleft = 0
+            case Verdict.IncorrectGuess:
+                self._no_of_currentguesses += 1
+
+
+        if self._no_of_currentguesses == self._no_of_filters:
+            self._attempts -= 1
+
+        if self._attemptsleft == 0 :
+            self._isRoundOver = True
+
+        if (self.nextRound()):
+            self._attemptsleft = self._attempts
+            self._no_of_currentguesses = 0
+            self._guessed_filters = []
+            self._current_round += 1
+            self.generate_random_image()
+            self.randfilter_image()
+
+        elif (self._isRoundOver and (self._current_round + 1 == self._rounds + 1)):
+            self._isGameOver = True
+        
+
         return verdict
-        ...
+
 
     def _check_guess(self,guess:Filter):
-        if self._isGameOver:
-            return Verdict.isGameOver
         if guess in self._correct_filters:
             return Verdict.CorrectGuess
         else:
+            self._guessed_filters.append(guess)
             return Verdict.IncorrectGuess
             
 
@@ -233,6 +289,17 @@ class FilterDleGame:
 image = cv.imread('image1.jpg')
 assert image is not None, "file could not be read, check with os.path.exists()" 
 
+
+image=cv.cvtColor(image,cv.COLOR_BGR2GRAY)
+se=cv.getStructuringElement(cv.MORPH_RECT , (8,8))
+bg=cv.morphologyEx(image, cv.MORPH_DILATE, se)
+out_gray=cv.divide(image, bg, scale=255)
+out_binary=cv.threshold(out_gray, 0, 255, cv.THRESH_OTSU )[1] 
+
+cv.imshow('binary', out_binary)  
+cv.imshow('gray', out_gray)  
+
+"""
 contrast = 50
 f = 131*(contrast + 127)/(127*(131-contrast))
 alpha_c = f
@@ -245,6 +312,7 @@ h, s, v = cv.split(new_image)
 v = np.clip(v * 2, 0, 255).astype(np.uint8)
 new_image = cv.merge([h, s, v])
 saturated_img = cv.cvtColor(new_image, cv.COLOR_HSV2BGR)
+"""
 #new_image = cv.addWeighted(image, alpha_c, image, 0, gamma_c)#cv.convertScaleAbs(image, alpha=0.5, beta=1)
 
 

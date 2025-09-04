@@ -198,12 +198,14 @@ class FilterDleGame:
         self._images = images
 
         self._attemptsleft = attempts
-        self._no_of_currentguesses = 0
-
         self._current_round = 0
         self._current_correctguesses = 0
+
         self._correct_filters:list[Filter] = [] 
-        self._guessed_filters:list[Filter] = []        
+
+        self._incorrectguesses:list[Filter] = []
+        self._correctguesses:list[Filter] = [] 
+
         self._isRoundOver = False
         self._isGameOver = False
         self._currentImage :MatLike | None = None
@@ -211,6 +213,12 @@ class FilterDleGame:
 
         self.generate_random_image()
         self.randfilter_image()
+    
+    def get_correctguesses(self):
+        return self._correctguesses
+    
+    def get_incorrectguesses(self):
+        return self._incorrectguesses
     
     def get_rounds(self):
         return self._rounds
@@ -230,8 +238,10 @@ class FilterDleGame:
     def randfilter_image(self):
         assert self._currentImage is not None
         self._filteredImage = self._currentImage
+        list_filterclass = list(Filter_Classes)
         for _ in range(self._no_of_filters):
-            random_filterclass = random.choice(list(Filter_Classes))
+            random_filterclass = random.choice(list_filterclass)
+            list_filterclass.remove(random_filterclass)
             random_filter_enum = random.choice(list(random_filterclass.value))
             random_filter = random_filter_enum.value
             random_filter_instance = random_filter()
@@ -242,7 +252,11 @@ class FilterDleGame:
         self._currentImage = self._images[random.randint(0,len(self._images)-1)]
 
     def remove_guess(self,guess:Filter):
-        self._guessed_filters.remove(guess)
+        if guess in self._incorrectguesses:
+            self._incorrectguesses.remove(guess)
+        else:
+            self._correctguesses.remove(guess)
+        self._attemptsleft += 1
     
     def make_guess(self,guess:Filter):
         if(self._isGameOver):
@@ -251,12 +265,12 @@ class FilterDleGame:
         verdict = self._check_guess(guess)
         match verdict:
             case Verdict.CorrectGuess:
-                self._attemptsleft = 0
+                self._incorrectguesses.append(guess)
             case Verdict.IncorrectGuess:
-                self._no_of_currentguesses += 1
+                self._correctguesses.append(guess)
 
 
-        if self._no_of_currentguesses == self._no_of_filters:
+        if len(self._incorrectguesses)+len(self._correctguesses) == self._no_of_filters:
             self._attempts -= 1
 
         if self._attemptsleft == 0 :
@@ -264,8 +278,9 @@ class FilterDleGame:
 
         if (self.nextRound()):
             self._attemptsleft = self._attempts
-            self._no_of_currentguesses = 0
             self._guessed_filters = []
+            self._incorrectguesses = []
+            self._correctguesses = []
             self._current_round += 1
             self.generate_random_image()
             self.randfilter_image()
@@ -276,12 +291,10 @@ class FilterDleGame:
 
         return verdict
 
-
     def _check_guess(self,guess:Filter):
         if guess in self._correct_filters:
             return Verdict.CorrectGuess
         else:
-            self._guessed_filters.append(guess)
             return Verdict.IncorrectGuess
             
 

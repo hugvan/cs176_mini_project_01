@@ -256,7 +256,6 @@ class FilterDleGame:
             self._incorrectguesses.remove(guess)
         else:
             self._correctguesses.remove(guess)
-        self._attemptsleft += 1
     
     def make_guess(self,guess:Filter):
         if(self._isGameOver):

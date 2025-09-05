@@ -3,11 +3,12 @@ import cv2 as cv
 from cv2.typing import MatLike
 from typing import Protocol
 from enum import Enum
+from typing import Union, Type
 #from matplotlib import pyplot as plt
 import random
 
 
-Verdict = Enum("Verdict", ["CorrectGuess","IncorrectGuess","isGameOver"])
+Verdict = Enum("Verdict", ["CorrectClassGuess","IncorrectClassGuess","CorrectFilterGuess","IncorrectFilterGuess","isGameOver","CorrectAnswer"])
 
 Image = MatLike
 
@@ -15,14 +16,18 @@ class Filter(Protocol):
     def filter_image(self,image:Image) ->Image:
         ...
 
-
-class BoxBlur:
+class EqualFilter:
+    def __eq__(self, other:object):
+        return type(self) is type(other)
+class BoxBlur(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         box_kernel = np.ones((3, 3), np.float32) / 9
         box_image = cv.filter2D(src=image, ddepth=-1, kernel=box_kernel)
         return box_image
+    def __eq__(self, other:object):
+        return isinstance(other, BoxBlur)
     
-class Emboss_Image:
+class Emboss_Image(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         emboss_kernel = np.array([
         [-2, -1, 0],
@@ -32,7 +37,7 @@ class Emboss_Image:
         embossed_image = cv.filter2D(src=image, ddepth=-1, kernel=emboss_kernel)
         return embossed_image
 
-class SharpenImage:
+class SharpenImage(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         sharpen_kernel = np.array([
             [0, -1, 0],
@@ -43,24 +48,24 @@ class SharpenImage:
         sharpened_img = cv.filter2D(src = image, ddepth=-1, kernel=sharpen_kernel)
         return sharpened_img
     
-class Sobel_X:
+class Sobel_X(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         return cv.Sobel(src=image, ddepth=cv.CV_64F, dx=1, dy=0, ksize=3)
     
-class Sobel_Y:
+class Sobel_Y(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         return cv.Sobel(src=image, ddepth=cv.CV_64F, dx=0, dy=1, ksize=3)
     
     
-class Increase_Brightness:
+class Increase_Brightness(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         return cv.convertScaleAbs(image, alpha=1, beta=127)
 
-class Decrease_Brightness:
+class Decrease_Brightness(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         return cv.convertScaleAbs(image, alpha=0.5, beta=1)
     
-class Increase_Contrast:
+class Increase_Contrast(EqualFilter):
     def filter_image(self,image:Image) -> Image:
         contrast = -50
         f = 131*(contrast + 127)/(127*(131-contrast))
@@ -68,7 +73,7 @@ class Increase_Contrast:
         gamma_c = 127*(1-f)
         return cv.addWeighted(image, alpha_c, image, 0, gamma_c)
 
-class Decrease_Contrast:
+class Decrease_Contrast(EqualFilter):
     def filter_image(self,image:Image) -> Image:
         contrast = 50
         f = 131*(contrast + 127)/(127*(131-contrast))
@@ -76,16 +81,16 @@ class Decrease_Contrast:
         gamma_c = 127*(1-f)
         return cv.addWeighted(image, alpha_c, image, 0, gamma_c)
     
-class Threshold_BinaryInverse:
+class Threshold_BinaryInverse(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         return cv.threshold(image,127,255,cv.THRESH_BINARY_INV)[1]
 
-class Threshold_ToZero:
+class Threshold_ToZero(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         return cv.threshold(image,127,255,cv.THRESH_TOZERO)[1]
     
     
-class IncreaseSaturation:
+class IncreaseSaturation(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         new_image = cv.cvtColor(image,cv.COLOR_BGR2HSV)
         h, s, v = cv.split(new_image)
@@ -94,7 +99,7 @@ class IncreaseSaturation:
         saturated_img = cv.cvtColor(new_image, cv.COLOR_HSV2BGR)
         return saturated_img
 
-class DecreaseSaturation:
+class DecreaseSaturation(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         new_image = cv.cvtColor(image,cv.COLOR_BGR2HSV)
         h, s, v = cv.split(new_image)
@@ -103,7 +108,7 @@ class DecreaseSaturation:
         saturated_img = cv.cvtColor(new_image, cv.COLOR_HSV2BGR)
         return saturated_img
 
-class IncreaseHue:
+class IncreaseHue(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         new_image = cv.cvtColor(image,cv.COLOR_BGR2HSV)
         h, s, v = cv.split(new_image)
@@ -112,7 +117,7 @@ class IncreaseHue:
         hue_img = cv.cvtColor(new_image, cv.COLOR_HSV2BGR)
         return hue_img
     
-class DecreaseHue:
+class DecreaseHue(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         new_image = cv.cvtColor(image,cv.COLOR_BGR2HSV)
         h, s, v = cv.split(new_image)
@@ -121,11 +126,11 @@ class DecreaseHue:
         hue_img = cv.cvtColor(new_image, cv.COLOR_HSV2BGR)
         return hue_img
 
-class BilateralFilter:
+class BilateralFilter(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         return cv.bilateralFilter(image,9,75,75)
 
-class NoiseRemovalGray:
+class NoiseRemovalGray(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         image=cv.cvtColor(image,cv.COLOR_BGR2GRAY)
         se=cv.getStructuringElement(cv.MORPH_RECT , (8,8))
@@ -134,7 +139,7 @@ class NoiseRemovalGray:
         return out_gray
         
 
-class NoiseRemovalBinary:
+class NoiseRemovalBinary(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         image=cv.cvtColor(image,cv.COLOR_BGR2GRAY)
         se=cv.getStructuringElement(cv.MORPH_RECT , (8,8))
@@ -163,9 +168,9 @@ class ThresholdFilter(Enum):
 
 class EdgeFilter(Enum):
     EmbossImage = Emboss_Image
-    SharpenImage = SharpenImage
     SobelX = Sobel_X
     SobelY = Sobel_Y
+    SharpenImage = SharpenImage
 
 class BlurFilter(Enum):
     BoxBlur = BoxBlur   
@@ -175,14 +180,26 @@ class NoiseRemoval(Enum):
     NoiseRemovalBinary = NoiseRemovalBinary
     NoiseRemovalGray = NoiseRemovalGray
 
-class Filter_Classes(Enum):
-    ColorFilter = ColorFilter
-    ContrastFilter = ContrastFilter
-    BrightnessFilter = BrightnessFilter
-    ThresholdFilter = ThresholdFilter
-    EdgeFilter = EdgeFilter
-    BlurFilter = BlurFilter
-    NoiseRemoval = NoiseRemoval
+
+FilterClass = Union[
+    Type[ColorFilter],
+    Type[ContrastFilter],
+    Type[BrightnessFilter],
+    Type[ThresholdFilter],
+    Type[EdgeFilter],
+    Type[BlurFilter],
+    Type[NoiseRemoval],
+]
+
+filter_classes: list[FilterClass] = [
+    ColorFilter,
+    ContrastFilter,
+    BrightnessFilter,
+    ThresholdFilter,
+    EdgeFilter,
+    BlurFilter,
+    NoiseRemoval,
+]
 
 
 class FilterDleGame:
@@ -199,26 +216,28 @@ class FilterDleGame:
 
         self._attemptsleft = attempts
         self._current_round = 0
-        self._current_correctguesses = 0
+       
 
         self._correct_filters:list[Filter] = [] 
+        self._correct_filterclasses:list[FilterClass] = []
+        
+        self._round_remaining_guesses = no_of_filters
+        self._correct_guesses = 0
 
-        self._incorrectguesses:list[Filter] = []
-        self._correctguesses:list[Filter] = [] 
+        self._guess_filter = False
 
         self._isRoundOver = False
         self._isGameOver = False
+
         self._currentImage :MatLike | None = None
         self._filteredImage:MatLike | None = None
 
         self.generate_random_image()
         self.randfilter_image()
     
-    def get_correctguesses(self):
-        return self._correctguesses
     
     def get_incorrectguesses(self):
-        return self._incorrectguesses
+        return self._round_remaining_guesses
     
     def get_rounds(self):
         return self._rounds
@@ -237,13 +256,15 @@ class FilterDleGame:
     
     def randfilter_image(self):
         assert self._currentImage is not None
+        self._correct_filterclasses = []
+        self._correct_filters = []
         self._filteredImage = self._currentImage
-        list_filterclass = list(Filter_Classes)
+        list_filterclass = filter_classes.copy()
         for _ in range(self._no_of_filters):
             random_filterclass = random.choice(list_filterclass)
+            self._correct_filterclasses.append(random_filterclass)
             list_filterclass.remove(random_filterclass)
-            random_filter_enum = random.choice(list(random_filterclass.value))
-            random_filter = random_filter_enum.value
+            random_filter = random.choice(list(random_filterclass)).value
             random_filter_instance = random_filter()
             self._correct_filters.append(random_filter_instance)
             self._filteredImage = random_filter_instance.filter_image(self._filteredImage)
@@ -251,53 +272,70 @@ class FilterDleGame:
     def generate_random_image(self):
         self._currentImage = self._images[random.randint(0,len(self._images)-1)]
 
-    def remove_guess(self,guess:Filter):
-        if guess in self._incorrectguesses:
-            self._incorrectguesses.remove(guess)
-        else:
-            self._correctguesses.remove(guess)
-    
-    def make_guess(self,guess:Filter):
-        if(self._isGameOver):
-            return Verdict.isGameOver
-        
-        verdict = self._check_guess(guess)
-        match verdict:
-            case Verdict.CorrectGuess:
-                self._incorrectguesses.append(guess)
-            case Verdict.IncorrectGuess:
-                self._correctguesses.append(guess)
-
-
-        if len(self._incorrectguesses)+len(self._correctguesses) == self._no_of_filters:
-            self._attempts -= 1
-
-        if self._attemptsleft == 0 :
+    def check_roundstate(self):
+        if (self._attemptsleft > 0 and self._attempt_remaining_guesses == 0):
+            self._attemptsleft -= 1
+            self._attempt_remaining_guesses = self._no_of_filters
+        if self._attemptsleft == 0:
             self._isRoundOver = True
-
         if (self.nextRound()):
             self._attemptsleft = self._attempts
-            self._guessed_filters = []
-            self._incorrectguesses = []
-            self._correctguesses = []
             self._current_round += 1
+            self._attempt_remaining_guesses = self._no_of_filters
             self.generate_random_image()
             self.randfilter_image()
-
         elif (self._isRoundOver and (self._current_round + 1 == self._rounds + 1)):
             self._isGameOver = True
+
+    def guess_filterclass(self,guess:FilterClass):
+        if(self._isGameOver):
+            return Verdict.isGameOver  
         
-
-        return verdict
-
-    def _check_guess(self,guess:Filter):
-        if guess in self._correct_filters:
-            return Verdict.CorrectGuess
+        verdict = self._check_guess_filterclass(guess)
+        
+        if verdict == Verdict.CorrectClassGuess:
+            self._guess_filter = True
+            return verdict
         else:
-            return Verdict.IncorrectGuess
-            
+            self._guess_filter = False
+            self._attempt_remaining_guesses -= 1
+            self.check_roundstate()
+            return verdict
+    
+    def guess_filter(self,guess:Filter):
+        assert self._guess_filter
+
+        verdict = self._check_guess_filter(guess)
+
+        self._attempt_remaining_guesses -= 1
+       
+
+        if verdict == Verdict.CorrectFilterGuess:
+            self._correct_guesses += 1
+            if (self._correct_guesses == self._no_of_filters):
+                verdict = Verdict.CorrectAnswer
+                self._attemptsleft = 0
+            self.check_roundstate()
+            return verdict
+        
+        else:
+            self.check_roundstate()
+            return verdict
 
 
+    def _check_guess_filterclass(self,guess:FilterClass):
+        if guess in self._correct_filterclasses:
+            return Verdict.CorrectClassGuess
+        else:
+            return Verdict.IncorrectClassGuess
+    
+    def _check_guess_filter(self,guess:Filter):
+        if guess in self._correct_filters:
+            return Verdict.CorrectFilterGuess
+        else:
+            return Verdict.IncorrectFilterGuess
+
+"""
 image = cv.imread('image1.jpg')
 assert image is not None, "file could not be read, check with os.path.exists()" 
 
@@ -311,7 +349,7 @@ out_binary=cv.threshold(out_gray, 0, 255, cv.THRESH_OTSU )[1]
 cv.imshow('binary', out_binary)  
 cv.imshow('gray', out_gray)  
 
-"""
+
 contrast = 50
 f = 131*(contrast + 127)/(127*(131-contrast))
 alpha_c = f

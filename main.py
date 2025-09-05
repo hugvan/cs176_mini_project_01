@@ -27,9 +27,8 @@ class MainWindow(QMainWindow):
 
 
     def make_guess(self, filter_list: list[FilterObject]):
-        print("Yes")
-
-
+        for f_obj in filter_list:
+            print(f_obj.filter_categ)
 
 
 if __name__ == "__main__":

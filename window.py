@@ -24,6 +24,26 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame,
     QStatusBar, QVBoxLayout, QWidget)
 from PySide6.QtCore import Slot
 
+from model import *
+
+F_CATEGORY_STR: dict[type, str] = {
+    ColorFilter: "Color",
+    ContrastFilter: "Contrast", 
+    BrightnessFilter: "Brightness", 
+    ThresholdFilter: "Threshold", 
+    EdgeFilter: "Edges", 
+    BlurFilter: "Blur"
+} 
+
+TYPE_OPTIONS = {
+    "Color": ["+Saturation", "-Saturation", "+Hue", "-Hue"],
+    "Contrast": ["+50%", "-50%"],
+    "Brightness": ["+", ],
+    "Threshold": [],
+    "Edges": [],
+    "Blur": [],
+}
+
 class GuessButton(QPushButton):
     def __init__(self, controller, parent=None):
         QPushButton.__init__(self)
@@ -51,9 +71,9 @@ class GuessButton(QPushButton):
         self.controller.make_guess(self.filters_checked)
 
 class FilterObject(QFrame):
-    def __init__(self, filter_name: str, filter_options: list[str], guess_btn: GuessButton, parent=None):
-        self.filter_name = filter_name
-        self.filter_options = filter_options
+    def __init__(self, filter_categ: type, guess_btn: GuessButton, parent=None):
+        self.filter_categ = filter_categ
+        self.filter_options = [m.name for m in filter_categ]  # type: ignore
         self.guess_btn = guess_btn
         
         QFrame.__init__(self)
@@ -79,6 +99,7 @@ class FilterObject(QFrame):
         vlayout.setObjectName("vlayout")
         self.check = QCheckBox(self)
         self.check.setObjectName("filter_check")
+        filter_name = F_CATEGORY_STR[filter_categ]
         self.check.setText( QCoreApplication.translate("MainWindow", filter_name, None) )
         sizePolicy1.setHeightForWidth(self.check.sizePolicy().hasHeightForWidth())
         self.check.setSizePolicy(sizePolicy1)
@@ -89,7 +110,7 @@ class FilterObject(QFrame):
 
         
         self.drop = QComboBox(self)
-        for option in filter_options:
+        for option in self.filter_options:
             self.drop.addItem(option)
 
         self.drop.setObjectName("filter_drop")
@@ -167,15 +188,6 @@ class Ui_MainWindow(object):
 
     def __init__(self, controller) -> None:
         self.controller = controller
-        self.filter_types = ["Color", "Contrast", "Brightness", "Threshold", "Edges", "Blur"]
-        self.type_options = {
-            "Color": ["+Saturation", "-Saturation", "+Hue", "-Hue"],
-            "Contrast": ["+50%", "-50%"],
-            "Brightness": ["+", ],
-            "Threshold": [],
-            "Edges": [],
-            "Blur": [],
-        }
 
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
@@ -208,9 +220,8 @@ class Ui_MainWindow(object):
 
         
         for i, j in product(range(2), range(3)):
-            f_type = self.filter_types[i*3 + j]
-            t_opt = self.type_options[f_type]
-            f_obj = FilterObject(f_type, t_opt, self.make_guess_button, parent=self.vlayout_left)
+            f_type = filter_classes[i*3 + j]
+            f_obj = FilterObject(f_type, self.make_guess_button, parent=self.vlayout_left)
             self.gridLayout.addWidget(f_obj, i, j, 1, 1)
         
         self.vlayout_left.addLayout(self.gridLayout)

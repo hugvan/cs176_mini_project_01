@@ -12,14 +12,14 @@ class MainWindow(QMainWindow):
         img1 = cv.imread('nature.jpg')
         assert img1 is not None
         
-        self.model = FilterDleGame(1, 5, 2, [img1])
+        self.model = FilterDleGame(1, 5, 1, [img1])
         filtered_img = self.model.get_filteredImage()
         
         assert filtered_img is not None
         assert len(filtered_img.shape) == 3
 
         print(self.model._correct_filters)
-
+        print(self.model.guess_filterclass(ColorFilter))
 
         self.show()
 

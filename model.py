@@ -19,6 +19,7 @@ class Filter(Protocol):
 class EqualFilter:
     def __eq__(self, other:object):
         return type(self) is type(other)
+
 class BoxBlur(EqualFilter):
     def filter_image(self,image:Image) ->Image:
         box_kernel = np.ones((5, 5), np.float32) / 25
@@ -50,7 +51,11 @@ class SharpenImage(EqualFilter):
     
 class Sobel_X(EqualFilter):
     def filter_image(self,image:Image) ->Image:
-        return cv.Sobel(src=image, ddepth=cv.CV_64F, dx=1, dy=0, ksize=3)
+        sobel = cv.Sobel(src=image, ddepth=cv.CV_64F, dx=1, dy=0, ksize=3)
+        magnitude_8bit = cv.convertScaleAbs(sobel)
+
+        return cv.cvtColor(magnitude_8bit, cv.COLOR_GRAY2BGR)
+
     
 class Sobel_Y(EqualFilter):
     def filter_image(self,image:Image) ->Image:
@@ -168,8 +173,8 @@ class ThresholdFilter(Enum):
 
 class EdgeFilter(Enum):
     EmbossImage = Emboss_Image
-    SobelX = Sobel_X
-    SobelY = Sobel_Y
+    # SobelX = Sobel_X
+    # SobelY = Sobel_Y
     SharpenImage = SharpenImage
 
 class BlurFilter(Enum):
@@ -198,7 +203,7 @@ filter_classes: list[FilterClass] = [
     ThresholdFilter,
     EdgeFilter,
     BlurFilter,
-    NoiseRemoval,
+    # NoiseRemoval,
 ]
 
 
@@ -221,7 +226,7 @@ class FilterDleGame:
         self._correct_filters:list[Filter] = [] 
         self._correct_filterclasses:list[FilterClass] = []
         
-        self._round_remaining_guesses = no_of_filters
+        self._attempt_remaining_guesses = no_of_filters
         self._correct_guesses = 0
 
         self._guess_filter = False
@@ -237,7 +242,7 @@ class FilterDleGame:
     
     
     def get_incorrectguesses(self):
-        return self._round_remaining_guesses
+        return self._attempt_remaining_guesses
     
     def get_rounds(self):
         return self._rounds
@@ -378,7 +383,7 @@ new_image = cv.merge([h, s, v])
 saturated_img = cv.cvtColor(new_image, cv.COLOR_HSV2BGR)
 """ 
 # Wait until user press some key
-# cv.waitKey()
+
 
 
 
@@ -418,3 +423,7 @@ for i in range(7):
  
 plt.show()
 """
+# image = cv.imread('nature.jpg')
+# cv.imshow('', Sobel_Y().filter_image(image)) 
+
+# cv.waitKey()

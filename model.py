@@ -18,7 +18,7 @@ class Filter(Protocol):
 
 class BoxBlur:
     def filter_image(self,image:Image) ->Image:
-        box_kernel = np.ones((3, 3), np.float32) / 9
+        box_kernel = np.ones((5, 5), np.float32) / 25
         box_image = cv.filter2D(src=image, ddepth=-1, kernel=box_kernel)
         return box_image
     
@@ -62,7 +62,7 @@ class Decrease_Brightness:
     
 class Increase_Contrast:
     def filter_image(self,image:Image) -> Image:
-        contrast = -50
+        contrast = +50
         f = 131*(contrast + 127)/(127*(131-contrast))
         alpha_c = f
         gamma_c = 127*(1-f)
@@ -70,7 +70,7 @@ class Increase_Contrast:
 
 class Decrease_Contrast:
     def filter_image(self,image:Image) -> Image:
-        contrast = 50
+        contrast = -50
         f = 131*(contrast + 127)/(127*(131-contrast))
         alpha_c = f
         gamma_c = 127*(1-f)
@@ -164,8 +164,8 @@ class ThresholdFilter(Enum):
 class EdgeFilter(Enum):
     EmbossImage = Emboss_Image
     SharpenImage = SharpenImage
-    SobelX = Sobel_X
-    SobelY = Sobel_Y
+    # SobelX = Sobel_X
+    # SobelY = Sobel_Y
 
 class BlurFilter(Enum):
     BoxBlur = BoxBlur   
@@ -182,7 +182,7 @@ class Filter_Classes(Enum):
     ThresholdFilter = ThresholdFilter
     EdgeFilter = EdgeFilter
     BlurFilter = BlurFilter
-    NoiseRemoval = NoiseRemoval
+    # NoiseRemoval = NoiseRemoval
 
 
 class FilterDleGame:
@@ -298,18 +298,18 @@ class FilterDleGame:
             
 
 
-image = cv.imread('image1.jpg')
-assert image is not None, "file could not be read, check with os.path.exists()" 
+# image = cv.imread('image1.jpg')
+# assert image is not None, "file could not be read, check with os.path.exists()" 
 
 
-image=cv.cvtColor(image,cv.COLOR_BGR2GRAY)
-se=cv.getStructuringElement(cv.MORPH_RECT , (8,8))
-bg=cv.morphologyEx(image, cv.MORPH_DILATE, se)
-out_gray=cv.divide(image, bg, scale=255)
-out_binary=cv.threshold(out_gray, 0, 255, cv.THRESH_OTSU )[1] 
+# image=cv.cvtColor(image,cv.COLOR_BGR2GRAY)
+# se=cv.getStructuringElement(cv.MORPH_RECT , (8,8))
+# bg=cv.morphologyEx(image, cv.MORPH_DILATE, se)
+# out_gray=cv.divide(image, bg, scale=255)
+# out_binary=cv.threshold(out_gray, 0, 255, cv.THRESH_OTSU )[1] 
 
-cv.imshow('binary', out_binary)  
-cv.imshow('gray', out_gray)  
+# cv.imshow('binary', out_binary)  
+# cv.imshow('gray', out_gray)  
 
 """
 contrast = 50
@@ -340,7 +340,7 @@ new_image = cv.merge([h, s, v])
 saturated_img = cv.cvtColor(new_image, cv.COLOR_HSV2BGR)
 """ 
 # Wait until user press some key
-cv.waitKey()
+# cv.waitKey()
 
 
 

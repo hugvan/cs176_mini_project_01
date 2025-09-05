@@ -1,3 +1,4 @@
+from __future__ import annotations
 # -*- coding: utf-8 -*-
 
 ################################################################################
@@ -24,21 +25,30 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame,
 from PySide6.QtCore import Slot
 
 class GuessButton(QPushButton):
-    def __init__(self, parent=None):
+    def __init__(self, controller, parent=None):
         QPushButton.__init__(self)
 
-        self.checks_clicked = 0
+        self.filters_checked = []
+        self.controller = controller
         self.update_viability()
+        self.clicked.connect(self.press_button)
     
-    def check_callback(self, is_add: bool):
-        self.checks_clicked += (1 if is_add else -1)
-        assert self.checks_clicked >= 0
+    def check_callback(self, is_add: bool, filt: FilterObject):
+        if (is_add):
+            self.filters_checked.append(filt)
+        else:
+            self.filters_checked.remove(filt)
+        
         self.update_viability()
 
     def update_viability(self):
-        exact_clicks = self.checks_clicked == 2
+        exact_clicks = len(self.filters_checked) == 2
         self.setEnabled(exact_clicks)
         self.setStyleSheet(";" if exact_clicks else "color: gray;") 
+
+    @Slot()
+    def press_button(self):
+        self.controller.make_guess(self.filters_checked)
 
 class FilterObject(QFrame):
     def __init__(self, filter_name: str, filter_options: list[str], guess_btn: GuessButton, parent=None):
@@ -93,7 +103,7 @@ class FilterObject(QFrame):
     def press_button(self):
         is_checked = self.check.isChecked()
         
-        self.guess_btn.check_callback(is_checked)
+        self.guess_btn.check_callback(is_checked, self)
         
         if is_checked:
             self.check.setStyleSheet("color: green;") 
@@ -155,6 +165,18 @@ class GuessObject(QHBoxLayout):
 
 class Ui_MainWindow(object):
 
+    def __init__(self, controller) -> None:
+        self.controller = controller
+        self.filter_types = ["Color", "Contrast", "Brightness", "Threshold", "Edges", "Blur"]
+        self.type_options = {
+            "Color": ["+Saturation", "-Saturation", "+Hue", "-Hue"],
+            "Contrast": ["+50%", "-50%"],
+            "Brightness": ["+", ],
+            "Threshold": [],
+            "Edges": [],
+            "Blur": [],
+        }
+
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
@@ -181,11 +203,14 @@ class Ui_MainWindow(object):
         self.gridLayout = QGridLayout()
         self.gridLayout.setObjectName(u"gridLayout")
 
-        self.make_guess_button = GuessButton(self.centralwidget)
+        self.make_guess_button = GuessButton(self.controller, self.centralwidget)
         self.make_guess_button.setObjectName(u"make_guess_button")
 
-        for i, j in product(range(3), range(3)):
-            f_obj = FilterObject(f"Row {i} Column {j}", [], self.make_guess_button, parent=self.vlayout_left)
+        
+        for i, j in product(range(2), range(3)):
+            f_type = self.filter_types[i*3 + j]
+            t_opt = self.type_options[f_type]
+            f_obj = FilterObject(f_type, t_opt, self.make_guess_button, parent=self.vlayout_left)
             self.gridLayout.addWidget(f_obj, i, j, 1, 1)
         
         self.vlayout_left.addLayout(self.gridLayout)
@@ -224,12 +249,14 @@ class Ui_MainWindow(object):
         self.vlayout_right.setObjectName(u"vlayout_right")
         self.guessed_image = QLabel(self.centralwidget)
         self.guessed_image.setObjectName(u"guessed_image")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         sizePolicy3.setHorizontalStretch(0)
         sizePolicy3.setVerticalStretch(0)
         sizePolicy3.setHeightForWidth(self.guessed_image.sizePolicy().hasHeightForWidth())
         self.guessed_image.setSizePolicy(sizePolicy3)
-        self.guessed_image.setMinimumSize(QSize(300, 150))
+        self.guessed_image.setMaximumSize(QSize(256, 150))
+        
+        self.guessed_image.setScaledContents(True)
         self.guessed_image.setStyleSheet(u"background-color: rgb(0, 0, 0);")
 
         self.vlayout_right.addWidget(self.guessed_image)
@@ -268,6 +295,12 @@ class Ui_MainWindow(object):
 
         QMetaObject.connectSlotsByName(MainWindow)
 
+    def change_image(self, image_mat):
+        s = image_mat.shape
+        
+        q_image = QImage(image_mat, s[1], s[0], QImage.Format.Format_RGB888)
+        pixmap = QPixmap.fromImage(q_image)
+        self.guessed_image.setPixmap(pixmap)
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", "MainWindow", None))

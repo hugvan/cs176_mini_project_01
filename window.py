@@ -132,11 +132,11 @@ class FilterObject(QFrame):
             self.check.setStyleSheet(";") 
 
 
-GPortion = tuple[str, str]
+GPortion = tuple[Verdict, type, Enum]
 GObject = tuple[GPortion, GPortion]
 
 class GuessObject(QHBoxLayout):
-    def __init__(self, guesses: list[GObject], s_parent):
+    def __init__(self, guess: GObject, s_parent):
         
         QHBoxLayout.__init__(self)
         
@@ -146,12 +146,20 @@ class GuessObject(QHBoxLayout):
         
         self.setObjectName("guess_object")
         
-        def add_guess_portion(f_name: str, f_option: str):
+        def add_guess_portion(verdict: Verdict, f_name: type, f_option: Enum):
             guess_portion = QFrame(s_parent)
             guess_portion.setObjectName("guess_portion")
             size_policy.setHeightForWidth(guess_portion.sizePolicy().hasHeightForWidth())
             guess_portion.setSizePolicy(size_policy)
-            guess_portion.setStyleSheet("background-color: rgb(255, 255, 127);\n"
+            
+            if verdict == Verdict.IncorrectClassGuess:
+                bg_color = "rgb(127, 127, 127)"
+            elif verdict == Verdict.IncorrectFilterGuess:
+                bg_color = "rgb(255, 255, 127)"
+            else:
+                bg_color = "rgb(127, 255, 127)"
+            
+            guess_portion.setStyleSheet(f"background-color: {bg_color};\n"
             "color: rgb(0, 0, 0);")
             guess_portion.setFrameShape(QFrame.Shape.StyledPanel)
             guess_portion.setFrameShadow(QFrame.Shadow.Sunken)
@@ -164,7 +172,8 @@ class GuessObject(QHBoxLayout):
             guess_filter_name.setObjectName("guess_filter_name")
             guess_filter_name.setTextFormat(Qt.TextFormat.RichText)
             guess_filter_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            guess_filter_name.setText(QCoreApplication.translate("MainWindow", f_name, None))
+            f_name_str = F_CATEGORY_STR[f_name]
+            guess_filter_name.setText(QCoreApplication.translate("MainWindow", f_name_str, None))
 
             vlayout.addWidget(guess_filter_name)
 
@@ -173,16 +182,16 @@ class GuessObject(QHBoxLayout):
             guess_option.setTextFormat(Qt.TextFormat.RichText)
             guess_option.setAlignment(Qt.AlignmentFlag.AlignCenter)
             guess_option.setText(QCoreApplication.translate("MainWindow", 
-                f"<html><head/><body><p><span style=\" font-weight:700;\">{f_option}</span></p></body></html>", None))
+                f"<html><head/><body><p><span style=\" font-weight:700;\">{f_option.name}</span></p></body></html>", None))
 
             vlayout.addWidget(guess_option)
 
             self.addWidget(guess_portion)
 
 
-        for gp1, gp2 in guesses:
-            add_guess_portion(gp1[0], gp1[1])
-            add_guess_portion(gp2[0], gp2[1])
+        gp1, gp2 = guess
+        add_guess_portion(gp1[0], gp1[1], gp1[2])
+        add_guess_portion(gp2[0], gp2[1], gp2[2])
 
 class Ui_MainWindow(object):
 
@@ -280,8 +289,6 @@ class Ui_MainWindow(object):
         self.verticalLayout_17 = QVBoxLayout(self.guess_container)
         self.verticalLayout_17.setObjectName(u"verticalLayout_17")
         
-        g_obj = GuessObject([(("Brightness", "50%"), ("Brightness", "50%"))], self.guess_container)
-        self.verticalLayout_17.addLayout(g_obj)
 
         self.verticalSpacer = QSpacerItem(20, 198, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
@@ -312,6 +319,11 @@ class Ui_MainWindow(object):
         q_image = QImage(image_mat, s[1], s[0], QImage.Format.Format_RGB888)
         pixmap = QPixmap.fromImage(q_image)
         self.guessed_image.setPixmap(pixmap)
+
+    def add_guess_object(self, guess: GObject):
+        g_obj =  GuessObject(guess, self.guess_container)
+        num_elem =  len(self.verticalLayout_17.children())
+        self.verticalLayout_17.insertLayout(num_elem, g_obj)
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", "MainWindow", None))

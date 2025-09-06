@@ -168,8 +168,8 @@ class BrightnessFilter(Enum):
     DecBrightness = Decrease_Brightness
 
 class ThresholdFilter(Enum):
-    ThresholdBinaryInv = Threshold_BinaryInverse
-    ThresholdToZero = Threshold_ToZero
+    BinaryInv = Threshold_BinaryInverse
+    ToZero = Threshold_ToZero
 
 class EdgeFilter(Enum):
     EmbossImage = Emboss_Image
@@ -296,7 +296,7 @@ class FilterDleGame:
         if(self._isGameOver):
             return Verdict.isGameOver  
         
-        verdict = self._check_guess_filterclass(guess)
+        verdict = self.check_guess_filterclass(guess)
         
         if verdict == Verdict.CorrectClassGuess:
             self._guess_filter = True
@@ -310,7 +310,7 @@ class FilterDleGame:
     def guess_filter(self,guess:Filter):
         assert self._guess_filter
 
-        verdict = self._check_guess_filter(guess)
+        verdict = self.check_guess_filter(guess)
 
         self._attempt_remaining_guesses -= 1
        
@@ -328,17 +328,26 @@ class FilterDleGame:
             return verdict
 
 
-    def _check_guess_filterclass(self,guess:FilterClass):
+    def check_guess_filterclass(self,guess:FilterClass):
         if guess in self._correct_filterclasses:
             return Verdict.CorrectClassGuess
         else:
             return Verdict.IncorrectClassGuess
     
-    def _check_guess_filter(self,guess:Filter):
+    def check_guess_filter(self,guess:Filter):
         if guess in self._correct_filters:
             return Verdict.CorrectFilterGuess
         else:
             return Verdict.IncorrectFilterGuess
+        
+    def check_combined(self, guess_class:FilterClass, guess_filter: Filter):
+        v1 = self.check_guess_filterclass(guess_class)
+        v2 = self.check_guess_filter(guess_filter)
+
+        if v1 == Verdict.IncorrectClassGuess:
+            return v1
+        else:
+            return v2
 
 """
 image = cv.imread('image1.jpg')

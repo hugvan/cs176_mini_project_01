@@ -12,14 +12,13 @@ class MainWindow(QMainWindow):
         img1 = cv.imread('nature.jpg')
         assert img1 is not None
         
-        self.model = FilterDleGame(1, 5, 1, [img1])
+        self.model = FilterDleGame(1, 5, 2, [img1])
         filtered_img = self.model.get_filteredImage()
         
         assert filtered_img is not None
         assert len(filtered_img.shape) == 3
 
         print(self.model._correct_filters)
-        print(self.model.guess_filterclass(ColorFilter))
 
         self.show()
 
@@ -27,8 +26,21 @@ class MainWindow(QMainWindow):
 
 
     def make_guess(self, filter_list: list[FilterObject]):
+        
+        g_obj = []
         for f_obj in filter_list:
-            print(f_obj.filter_categ)
+            categ = f_obj.filter_categ
+            option: Enum = categ[f_obj.drop.currentText()] # type: ignore
+            option_obj = option.value()
+
+            verd = self.model.check_combined(categ, option_obj)
+            print("V ", verd)
+            
+            g_portion: GPortion = verd, categ, option
+            g_obj.append(g_portion)
+        
+        self.ui.add_guess_object(tuple(g_obj))
+
 
 
 if __name__ == "__main__":

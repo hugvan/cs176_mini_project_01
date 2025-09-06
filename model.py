@@ -5,6 +5,7 @@ from typing import Protocol
 from enum import Enum
 from typing import Union, Type
 #from matplotlib import pyplot as plt
+from numpy.typing import NDArray
 import random
 
 
@@ -153,6 +154,94 @@ class NoiseRemovalBinary(EqualFilter):
         out_binary=cv.threshold(out_gray, 0, 255, cv.THRESH_OTSU )[1] 
         return out_binary
     
+class TranslateRight(EqualFilter):
+    def filter_image(self,image:Image) ->Image:
+        height, width = image.shape[:2]
+        quarter_height, quarter_width = height // 4, width // 4
+
+        T: NDArray[np.float32] = np.array(
+            [[1, 0, quarter_width], 
+            [0, 1, 0]], 
+            dtype=np.float32
+        )
+        img_translation = cv.warpAffine(image, T, (width, height))
+        return img_translation
+class TranslateLeft(EqualFilter):
+    def filter_image(self,image:Image) ->Image:
+        height, width = image.shape[:2]
+        quarter_height, quarter_width = height // 4, width // 4
+
+        T: NDArray[np.float32] = np.array(
+            [[1, 0, -quarter_width], 
+            [0, 1, 0]], 
+            dtype=np.float32
+        )
+        img_translation = cv.warpAffine(image, T, (width, height))
+        return img_translation
+    
+class TranslateBottom(EqualFilter):
+    def filter_image(self,image:Image) ->Image:
+        height, width = image.shape[:2]
+        quarter_height, quarter_width = height // 4, width // 4
+
+        T: NDArray[np.float32] = np.array(
+            [[1, 0, 0],  
+            [0, 1, quarter_height]], 
+            dtype=np.float32
+        )
+        img_translation = cv.warpAffine(image, T, (width, height))
+        return img_translation
+
+class TranslateTop(EqualFilter):
+    def filter_image(self,image:Image) ->Image:
+        height, width = image.shape[:2]
+        quarter_height, quarter_width = height // 4, width // 4
+
+        T: NDArray[np.float32] = np.array(
+            [[1, 0, 0],  
+            [0, 1, -quarter_height]], 
+            dtype=np.float32
+        )
+        img_translation = cv.warpAffine(image, T, (width, height))
+        return img_translation
+
+class Rotate30DegCCW(EqualFilter):
+    def filter_image(self,image:Image) ->Image:
+        center = (image.shape[1] // 2, image.shape[0] // 2)
+        angle = 30
+        scale = 1
+        rotation_matrix = cv.getRotationMatrix2D(center, angle, scale)
+        rotated_image = cv.warpAffine(image, rotation_matrix, (image.shape[1], image.shape[0]))
+        return rotated_image
+    
+class Rotate30DegCW(EqualFilter):
+    def filter_image(self,image:Image) ->Image:
+        center = (image.shape[1] // 2, image.shape[0] // 2)
+        angle = -30
+        scale = 1
+        rotation_matrix = cv.getRotationMatrix2D(center, angle, scale)
+        rotated_image = cv.warpAffine(image, rotation_matrix, (image.shape[1], image.shape[0]))
+        return rotated_image
+class Rotate180Deg(EqualFilter):
+    def filter_image(self,image:Image) ->Image:
+        center = (image.shape[1] // 2, image.shape[0] // 2)
+        angle = 180
+        scale = 1
+        rotation_matrix = cv.getRotationMatrix2D(center, angle, scale)
+        rotated_image = cv.warpAffine(image, rotation_matrix, (image.shape[1], image.shape[0]))
+        return rotated_image
+
+class ScaleDown(EqualFilter):
+    def filter_image(self,image:Image) ->Image:
+        scale_factor = 1/2
+        return cv.resize(image, None, fx=scale_factor, fy=scale_factor, interpolation=cv.INTER_CUBIC)
+
+class ScaleUp(EqualFilter):
+    def filter_image(self,image:Image) ->Image:
+        scale_factor = 1.5
+        return cv.resize(image, None, fx=scale_factor, fy=scale_factor, interpolation=cv.INTER_CUBIC)
+
+    
 class ColorFilter(Enum):
     IncSaturation = IncreaseSaturation
     DecSaturation = DecreaseSaturation
@@ -173,18 +262,26 @@ class ThresholdFilter(Enum):
 
 class EdgeFilter(Enum):
     EmbossImage = Emboss_Image
-    # SobelX = Sobel_X
-    # SobelY = Sobel_Y
     SharpenImage = SharpenImage
 
 class BlurFilter(Enum):
     BoxBlur = BoxBlur   
     BilateralFilter = BilateralFilter
 
-class NoiseRemoval(Enum):
-    NoiseRemovalBinary = NoiseRemovalBinary
-    NoiseRemovalGray = NoiseRemovalGray
+class TranslateFilter(Enum):
+    TranslateBottom = TranslateBottom
+    TranslateLeft = TranslateLeft
+    TranslateRight = TranslateRight
+    TranslateTop = TranslateTop
 
+class RotateFilter(Enum):
+    Rotate30DegCCW = Rotate30DegCCW
+    Rotate30DegCW = Rotate30DegCW
+    Rotate180Deg = Rotate180Deg
+
+class ScaleFilter(Enum):
+    ScaleDown = ScaleDown
+    ScaleUp = ScaleUp
 
 FilterClass = Union[
     Type[ColorFilter],
@@ -193,7 +290,9 @@ FilterClass = Union[
     Type[ThresholdFilter],
     Type[EdgeFilter],
     Type[BlurFilter],
-    Type[NoiseRemoval],
+    Type[TranslateFilter],
+    Type[RotateFilter],
+    Type[ScaleFilter]
 ]
 
 filter_classes: list[FilterClass] = [
@@ -203,7 +302,9 @@ filter_classes: list[FilterClass] = [
     ThresholdFilter,
     EdgeFilter,
     BlurFilter,
-    # NoiseRemoval,
+    TranslateFilter,
+    RotateFilter,
+    ScaleFilter
 ]
 
 
@@ -353,16 +454,23 @@ class FilterDleGame:
 image = cv.imread('image1.jpg')
 assert image is not None, "file could not be read, check with os.path.exists()" 
 
+center = (image.shape[1] // 2, image.shape[0] // 2)
+angle = 180
+scale = 1
+rotation_matrix = cv.getRotationMatrix2D(center, angle, scale)
+rotated_image = cv.warpAffine(image, rotation_matrix, (image.shape[1], image.shape[0]))
+scale_factor_1 = 1.5
+scale_factor_2 = 1/3.0
+height, width = image.shape[:2]
+new_height = int(height * scale_factor_1)
+new_width = int(width * scale_factor_1)
+zoomed_image = cv.resize(image, None, fx=scale_factor_1, fy=scale_factor_1, interpolation=cv.INTER_CUBIC)
 
-# image=cv.cvtColor(image,cv.COLOR_BGR2GRAY)
-# se=cv.getStructuringElement(cv.MORPH_RECT , (8,8))
-# bg=cv.morphologyEx(image, cv.MORPH_DILATE, se)
-# out_gray=cv.divide(image, bg, scale=255)
-# out_binary=cv.threshold(out_gray, 0, 255, cv.THRESH_OTSU )[1] 
+cv.imshow("Original Image", image)
+cv.imshow("Translated Image", zoomed_image)
 
-# cv.imshow('binary', out_binary)  
-# cv.imshow('gray', out_gray)  
-
+cv.waitKey(0)
+cv.destroyAllWindows()
 
 contrast = 50
 f = 131*(contrast + 127)/(127*(131-contrast))
@@ -392,9 +500,6 @@ new_image = cv.merge([h, s, v])
 saturated_img = cv.cvtColor(new_image, cv.COLOR_HSV2BGR)
 """ 
 # Wait until user press some key
-
-
-
 
 """
 #fft

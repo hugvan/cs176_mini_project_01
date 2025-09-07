@@ -32,17 +32,13 @@ F_CATEGORY_STR: dict[type, str] = {
     BrightnessFilter: "Brightness", 
     ThresholdFilter: "Threshold", 
     EdgeFilter: "Edges", 
-    BlurFilter: "Blur"
+    BlurFilter: "Blur",
+    TranslateFilter: "Translate",
+    RotateFilter: "Rotate",
+    ScaleFilter: "Scale"
 } 
 
-TYPE_OPTIONS = {
-    "Color": ["+Saturation", "-Saturation", "+Hue", "-Hue"],
-    "Contrast": ["+50%", "-50%"],
-    "Brightness": ["+", ],
-    "Threshold": [],
-    "Edges": [],
-    "Blur": [],
-}
+
 
 class GuessButton(QPushButton):
     def __init__(self, controller, parent=None):
@@ -228,7 +224,7 @@ class Ui_MainWindow(object):
         self.make_guess_button.setObjectName(u"make_guess_button")
 
         
-        for i, j in product(range(2), range(3)):
+        for i, j in product(range(3), range(3)):
             f_type = filter_classes[i*3 + j]
             f_obj = FilterObject(f_type, self.make_guess_button, parent=self.vlayout_left)
             self.gridLayout.addWidget(f_obj, i, j, 1, 1)

@@ -231,17 +231,21 @@ class Rotate180Deg(EqualFilter):
         rotated_image = cv.warpAffine(image, rotation_matrix, (image.shape[1], image.shape[0]))
         return rotated_image
 
-class ScaleDown(EqualFilter):
+class SkewLeft(EqualFilter):
     def filter_image(self,image:Image) ->Image:
-        scale_factor = 1/2
-        return cv.resize(image, None, fx=scale_factor, fy=scale_factor, interpolation=cv.INTER_CUBIC)
+        width, height = image.shape[1], image.shape[0]
 
-class ScaleUp(EqualFilter):
+        shearX, shearY = -0.30, 0
+        transformation_matrix = np.array([[1, shearX, 0], [0, 1, shearY]], dtype=np.float32)
+        sheared_image = cv.warpAffine(image, transformation_matrix, (width, height))
+        return sheared_image
+class SkewRight(EqualFilter):
     def filter_image(self,image:Image) ->Image:
-        scale_factor = 1.5
-        return cv.resize(image, None, fx=scale_factor, fy=scale_factor, interpolation=cv.INTER_CUBIC)
-
-    
+        width, height = image.shape[1], image.shape[0]
+        shearX, shearY = 0.30, 0
+        transformation_matrix = np.array([[1, shearX, 0], [0, 1, shearY]], dtype=np.float32)
+        sheared_image = cv.warpAffine(image, transformation_matrix, (width, height))
+        return sheared_image
 class ColorFilter(Enum):
     IncSaturation = IncreaseSaturation
     DecSaturation = DecreaseSaturation
@@ -279,9 +283,9 @@ class RotateFilter(Enum):
     Rotate30DegCW = Rotate30DegCW
     Rotate180Deg = Rotate180Deg
 
-class ScaleFilter(Enum):
-    ScaleDown = ScaleDown
-    ScaleUp = ScaleUp
+class SkewFilter(Enum):
+    SkewLeft = SkewLeft
+    SkewRight = SkewRight
 
 FilterClass = Union[
     Type[ColorFilter],
@@ -292,7 +296,7 @@ FilterClass = Union[
     Type[BlurFilter],
     Type[TranslateFilter],
     Type[RotateFilter],
-    Type[ScaleFilter]
+    Type[SkewFilter]
 ]
 
 filter_classes: list[FilterClass] = [
@@ -304,7 +308,7 @@ filter_classes: list[FilterClass] = [
     BlurFilter,
     TranslateFilter,
     RotateFilter,
-    ScaleFilter
+    SkewFilter
 ]
 
 
@@ -415,7 +419,6 @@ class FilterDleGame:
 
         self._attempt_remaining_guesses -= 1
        
-
         if verdict == Verdict.CorrectFilterGuess:
             self._correct_guesses += 1
             if (self._correct_guesses == self._no_of_filters):
@@ -454,90 +457,14 @@ class FilterDleGame:
 image = cv.imread('image1.jpg')
 assert image is not None, "file could not be read, check with os.path.exists()" 
 
-center = (image.shape[1] // 2, image.shape[0] // 2)
-angle = 180
-scale = 1
-rotation_matrix = cv.getRotationMatrix2D(center, angle, scale)
-rotated_image = cv.warpAffine(image, rotation_matrix, (image.shape[1], image.shape[0]))
-scale_factor_1 = 1.5
-scale_factor_2 = 1/3.0
-height, width = image.shape[:2]
-new_height = int(height * scale_factor_1)
-new_width = int(width * scale_factor_1)
-zoomed_image = cv.resize(image, None, fx=scale_factor_1, fy=scale_factor_1, interpolation=cv.INTER_CUBIC)
+width, height = image.shape[1], image.shape[0]
+shearX, shearY = 0.30,0
+transformation_matrix = np.array([[1, shearX, 0], [0, 1, shearY]], dtype=np.float32)
+sheared_image = cv.warpAffine(image, transformation_matrix, (width, height))
 
 cv.imshow("Original Image", image)
-cv.imshow("Translated Image", zoomed_image)
+cv.imshow("Translated Image", sheared_image)
 
 cv.waitKey(0)
 cv.destroyAllWindows()
-
-contrast = 50
-f = 131*(contrast + 127)/(127*(131-contrast))
-alpha_c = f
-gamma_c = 127*(1-f)
- 
-out = cv.convertScaleAbs(image, alpha=0.5, beta=1)
-
-new_image = cv.cvtColor(image,cv.COLOR_BGR2HSV)
-h, s, v = cv.split(new_image)
-v = np.clip(v * 2, 0, 255).astype(np.uint8)
-new_image = cv.merge([h, s, v])
-saturated_img = cv.cvtColor(new_image, cv.COLOR_HSV2BGR)
 """
-#new_image = cv.addWeighted(image, alpha_c, image, 0, gamma_c)#cv.convertScaleAbs(image, alpha=0.5, beta=1)
-
-
-
-
-#cv.imshow('Original Image', image)
-#cv.imshow('New Image', saturated_img)
-"""
- #cv.cvtColor(image,cv.COLOR_BGR2HSV)#cv.convertScaleAbs(image, alpha=2, beta=1)
-h, s, v = cv.split(new_image)
-s = np.clip(s * 2.0, 0, 255).astype(np.uint8)
-new_image = cv.merge([h, s, v])
-saturated_img = cv.cvtColor(new_image, cv.COLOR_HSV2BGR)
-""" 
-# Wait until user press some key
-
-"""
-#fft
-f = np.fft.fft2(image)
-fshift = np.fft.fftshift(f)
-magnitude_spectrum = 20*np.log(np.abs(fshift))
- 
-rows, cols = image.shape
-crow, ccol = rows//2, cols//2
-fshift[crow-30:crow+31, ccol-30:ccol+31] = 0
-f_ishift = np.fft.ifftshift(fshift)
-image_back = np.fft.ifft2(f_ishift)
-image_back = np.real(image_back)
- 
-
-def thresh_binary(image,threshold,max_val):
-    return cv.threshold(image,127,255,cv.THRESH_BINARY)
-
-ret,thresh1 = cv.threshold(image,127,255,cv.THRESH_BINARY)
-ret,thresh2 = cv.threshold(image,127,255,cv.THRESH_BINARY_INV)
-ret,thresh3 = cv.threshold(image,127,255,cv.THRESH_TRUNC)
-ret,thresh4 = cv.threshold(image,127,255,cv.THRESH_TOZERO)
-ret,thresh5 = cv.threshold(image,127,255,cv.THRESH_TOZERO_INV)
-
-
-ret,thresh6 = cv.threshold(image,200,255,cv.THRESH_BINARY)
- 
-titles = ['Original Image','BINARY','BINARY_INV','TRUNC','TOZERO','TOZERO_INV',"COMBI"]
-images = [image3, thresh1, thresh2, thresh3, thresh4, thresh5,thresh6]
-
-for i in range(7):
-    plt.subplot(3,3,i+1),plt.imshow(images[i],'gray',vmin=0,vmax=255)
-    plt.title(titles[i])
-    plt.xticks([]),plt.yticks([])
- 
-plt.show()
-"""
-# image = cv.imread('nature.jpg')
-# cv.imshow('', Sobel_Y().filter_image(image)) 
-
-# cv.waitKey()

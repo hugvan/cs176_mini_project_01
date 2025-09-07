@@ -35,7 +35,7 @@ F_CATEGORY_STR: dict[type, str] = {
     BlurFilter: "Blur",
     TranslateFilter: "Translate",
     RotateFilter: "Rotate",
-    ScaleFilter: "Scale"
+    SkewFilter: "Skew"
 } 
 
 

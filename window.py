@@ -312,7 +312,7 @@ class Ui_MainWindow(object):
     def change_image(self, image_mat):
         s = image_mat.shape
         
-        q_image = QImage(image_mat, s[1], s[0], QImage.Format.Format_RGB888)
+        q_image = QImage(image_mat, s[1], s[0], QImage.Format.Format_BGR888)
         pixmap = QPixmap.fromImage(q_image)
         self.guessed_image.setPixmap(pixmap)
 

@@ -18,8 +18,6 @@ class MainWindow(QMainWindow):
         assert filtered_img is not None
         assert len(filtered_img.shape) == 3
 
-        print(self.model._correct_filters)
-
         self.show()
 
         self.ui.change_image(filtered_img)
@@ -34,7 +32,6 @@ class MainWindow(QMainWindow):
             option_obj = option.value()
 
             verd = self.model.check_combined(categ, option_obj)
-            print("V ", verd)
             
             g_portion: GPortion = verd, categ, option
             g_obj.append(g_portion)

@@ -9,7 +9,7 @@ class MainWindow(QMainWindow):
         self.ui = Ui_MainWindow(self)
         self.ui.setupUi(self)
 
-        img1 = cv.imread('nature.jpg')
+        img1 = cv.imread('images/2.jpg')
         assert img1 is not None
         
         self.model = FilterDleGame(1, 5, 2, [img1])

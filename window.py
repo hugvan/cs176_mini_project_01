@@ -300,7 +300,7 @@ class Ui_MainWindow(object):
         sizePolicy3.setVerticalStretch(0)
         sizePolicy3.setHeightForWidth(self.guessed_image.sizePolicy().hasHeightForWidth())
         self.guessed_image.setSizePolicy(sizePolicy3)
-        self.guessed_image.setMaximumSize(QSize(256, 150))
+        self.guessed_image.setMaximumSize(QSize(444, 250))
         
         self.guessed_image.setScaledContents(True)
         self.guessed_image.setStyleSheet(u"background-color: rgb(0, 0, 0);")
@@ -341,10 +341,12 @@ class Ui_MainWindow(object):
 
     def change_image(self, image_mat):
         s = image_mat.shape
-        
-        q_image = QImage(image_mat, s[1], s[0], QImage.Format.Format_BGR888)
+        width, height = s[1], s[0]
+        ratio = width / height
+        q_image = QImage(image_mat, width, height, QImage.Format.Format_BGR888)
         pixmap = QPixmap.fromImage(q_image)
         self.guessed_image.setPixmap(pixmap)
+        self.guessed_image.setMaximumSize(QSize(200 * ratio, 200))
 
     def add_guess_object(self, guess: GObject):
         g_obj =  GuessObject(guess, self.guess_container)

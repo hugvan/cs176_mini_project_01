@@ -15,12 +15,12 @@ from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
     QMetaObject, QObject, QPoint, QRect,
     QSize, QTime, QUrl, Qt)
 from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
-    QFont, QFontDatabase, QGradient, QIcon,
+    QFont, QFontDatabase, QGradient, QIcon, QFileOpenEvent,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame,
-    QGridLayout, QHBoxLayout, QLabel, QMainWindow,
-    QMenuBar, QPushButton, QSizePolicy, QSpacerItem,
+    QGridLayout, QHBoxLayout, QLabel, QMainWindow, QFileDialog,
+    QMenuBar, QPushButton, QSizePolicy, QSpacerItem, QLayout,
     QStatusBar, QVBoxLayout, QWidget)
 from PySide6.QtCore import Slot
 
@@ -48,6 +48,15 @@ class GuessButton(QPushButton):
         self.controller = controller
         self.update_viability()
         self.clicked.connect(self.press_button)
+
+        self.setObjectName(u"make_guess_button")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        sizePolicy2.setHorizontalStretch(1)
+        sizePolicy2.setVerticalStretch(1)
+        sizePolicy2.setHeightForWidth(self.sizePolicy().hasHeightForWidth())
+        self.setSizePolicy(sizePolicy2)
+        self.setMinimumSize(QSize(100, 50))
+        self.setText(QCoreApplication.translate("MainWindow", "Make Guess", None))
     
     def check_callback(self, is_add: bool, filt: FilterObject):
         if (is_add):
@@ -65,6 +74,35 @@ class GuessButton(QPushButton):
     @Slot()
     def press_button(self):
         self.controller.make_guess(self.filters_checked)
+
+class NextRoundButton(QPushButton):
+    def __init__(self, controller, parent=None):
+        QPushButton.__init__(self)
+
+        self.controller = controller
+        self.clicked.connect(self.press_button)
+        
+        self.setObjectName(u"next_round_button")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        sizePolicy2.setHorizontalStretch(1)
+        sizePolicy2.setVerticalStretch(1)
+        sizePolicy2.setHeightForWidth(self.sizePolicy().hasHeightForWidth())
+        self.setSizePolicy(sizePolicy2)
+        self.setMinimumSize(QSize(100, 50))
+        self.setText(QCoreApplication.translate("MainWindow", "New Round", None))
+    
+    
+    @Slot()
+    def press_button(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            None,  # Parent widget (None for no parent)
+            "Open File",  # Dialog title
+            "",  # Initial directory (empty string for current directory)
+            "Images (*.jpg *.png *.bmp);;All Files (*)"  # File filters
+        )
+
+        self.controller.next_round(file_path)
+
 
 class FilterObject(QFrame):
     def __init__(self, filter_categ: type, guess_btn: GuessButton, parent=None):
@@ -221,9 +259,7 @@ class Ui_MainWindow(object):
         self.gridLayout.setObjectName(u"gridLayout")
 
         self.make_guess_button = GuessButton(self.controller, self.centralwidget)
-        self.make_guess_button.setObjectName(u"make_guess_button")
 
-        
         for i, j in product(range(3), range(3)):
             f_type = filter_classes[i*3 + j]
             f_obj = FilterObject(f_type, self.make_guess_button, parent=self.vlayout_left)
@@ -236,19 +272,12 @@ class Ui_MainWindow(object):
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-    
-        
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        sizePolicy2.setHorizontalStretch(1)
-        sizePolicy2.setVerticalStretch(1)
-        sizePolicy2.setHeightForWidth(self.make_guess_button.sizePolicy().hasHeightForWidth())
-        self.make_guess_button.setSizePolicy(sizePolicy2)
-        self.make_guess_button.setMinimumSize(QSize(100, 50))
-
-        
         self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout.addItem(self.horizontalSpacer)
+        self.horizontalLayout.addWidget(self.make_guess_button)
+        
+        self.new_round_button = NextRoundButton(self.controller, self.centralwidget)
         self.horizontalLayout.addWidget(self.make_guess_button)
         self.horizontalLayout.addItem(self.horizontalSpacer_2)
         
@@ -256,6 +285,7 @@ class Ui_MainWindow(object):
 
         self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
+        self.vlayout_left.addWidget(self.new_round_button)
         self.vlayout_left.addItem(self.verticalSpacer_2)
 
 
@@ -321,11 +351,30 @@ class Ui_MainWindow(object):
         num_elem =  len(self.verticalLayout_17.children())
         self.verticalLayout_17.insertLayout(num_elem, g_obj)
 
+    def remove_guess_objects(self):
+        pLayout = self.verticalLayout_17
+                
+        for i in reversed(range(pLayout.count())): 
+            y = pLayout.itemAt(i)
+            if not isinstance(y, GuessObject): continue
+            
+            clear_layout(y)
+
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", "MainWindow", None))
         self.guessed_image.setText("")
         self.title_label.setText(QCoreApplication.translate("MainWindow", "<html><head/><body><p><span style=\" font-size:28pt; font-weight:700;\">FILTERDLE</span></p></body></html>", None))
         
-        self.make_guess_button.setText(QCoreApplication.translate("MainWindow", "Make Guess", None))
-    # retranslateUi
+        
 
+def clear_layout(layout: QLayout):
+    """
+    Recursively clears a QLayout and its contents (widgets and sub-layouts).
+    """
+    while layout.count():
+        item = layout.takeAt(0)
+        if item.widget():
+            item.widget().deleteLater()  # Delete the widget
+        elif item.layout():
+            clear_layout(item.layout())  # Recursively clear sub-layouts
+        # The QLayoutItem itself will be deleted when its parent layout is deleted

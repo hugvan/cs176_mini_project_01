@@ -38,6 +38,20 @@ class MainWindow(QMainWindow):
         
         self.ui.add_guess_object(tuple(g_obj))
 
+    def next_round(self, image_path: str):
+        
+        img1 = cv.imread(image_path)
+        assert img1 is not None
+        
+        self.model = FilterDleGame(1, 5, 2, [img1])
+        filtered_img = self.model.get_filteredImage()
+        
+        assert filtered_img is not None
+        assert len(filtered_img.shape) == 3
+
+        self.ui.change_image(filtered_img)
+        self.ui.remove_guess_objects()
+
 
 
 if __name__ == "__main__":
